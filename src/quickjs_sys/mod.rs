@@ -4,6 +4,8 @@ pub mod js_class;
 pub mod js_module;
 
 use std::collections::HashMap;
+use std::ffi::CString;
+use std::os::raw::c_char;
 
 pub use js_class::*;
 pub use js_module::{JsModuleDef, ModuleInit};
@@ -375,7 +377,7 @@ impl Context {
         global.set("args", args_obj.into());
     }
 
-    pub fn eval_buf(&mut self, code: Vec<u8>, filename: &str, eval_flags: u32) -> JsValue {
+    pub fn eval_buf(&mut self, code: Vec<u8>, filename: &str, eval_flags: u32, dump_error: bool) -> JsValue {
         unsafe {
             let ctx = self.ctx;
             let len = code.len();
@@ -401,19 +403,22 @@ impl Context {
                     eval_flags as i32,
                 )
             };
-            if JS_IsException_real(val) > 0 {
+            if dump_error && JS_IsException_real(val) > 0 {
                 js_std_dump_error(ctx);
+            } else {
+                let str = JS_ToString(ctx, val);
+                return JsValue::from_qjs_value(ctx, str);
             }
             JsValue::from_qjs_value(ctx, val)
         }
     }
 
-    pub fn eval_global_str(&mut self, code: String) -> JsValue {
-        self.eval_buf(code.into_bytes(), "<evalScript>", JS_EVAL_TYPE_GLOBAL)
+    pub fn eval_global_str(&mut self, code: String, dump_error: bool) -> JsValue {
+        self.eval_buf(code.into_bytes(), "<evalScript>", JS_EVAL_TYPE_GLOBAL, dump_error)
     }
 
     pub fn eval_module_str(&mut self, code: String, filename: &str) {
-        self.eval_buf(code.into_bytes(), filename, JS_EVAL_TYPE_MODULE);
+        self.eval_buf(code.into_bytes(), filename, JS_EVAL_TYPE_MODULE, true);
         self.promise_loop_poll();
     }
 
@@ -804,6 +809,34 @@ impl JsFunction {
             let f = self.0.v;
             let v = JS_Call(ctx, f, js_undefined(), argv.len() as i32, argv.as_mut_ptr());
             JsValue::from_qjs_value(ctx, v)
+        }
+    }
+}
+
+impl JsException {
+    pub fn get_message(&self) -> Option<String> {
+        let ctx = self.0.ctx;
+        unsafe {
+            let exception = JS_GetException(ctx);
+            let is_error = JS_IsError(ctx, exception);
+            if is_error > 0 {
+                let c_message = CString::new("message").unwrap();
+                let error_message = JS_GetPropertyStr(ctx, exception, c_message.as_ptr());
+
+                let js_error_message = JsValue::from_qjs_value(ctx, error_message).to_string();
+                match js_error_message {
+                    Some(x) => {
+                        JS_FreeValue_real(ctx, exception);
+                        Some(x.to_string())
+                    }
+                    _ => {
+                        JS_FreeValue_real(ctx, exception);
+                        None
+                    }
+                }
+            } else {
+                None
+            }
         }
     }
 }
