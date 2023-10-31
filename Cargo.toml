@@ -16,6 +16,7 @@ exclude = [
 
 [dependencies]
 argparse = "0.2.2"
+base64 = "0.21.5"
 image = { version = "0.23.6", default-features = false, features = ["jpeg", "png"], optional = true }
 imageproc = { version =  "0.22.0", optional = true }
 libc = "0.2"
