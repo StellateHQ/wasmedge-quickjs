@@ -339,6 +339,7 @@ impl Context {
 
         js_init_dirname(&mut ctx);
 
+        super::internal_module::base64::init_base64_functions(&mut ctx);
         super::internal_module::core::init_global_function(&mut ctx);
         super::internal_module::core::init_ext_function(&mut ctx);
         super::internal_module::encoding::init_encoding_module(&mut ctx);

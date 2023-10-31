@@ -22,6 +22,7 @@ fn args_parse() -> (String, Vec<String>) {
 fn main() {
     use wasmedge_quickjs as q;
 
+   test_base64();
    test_errors();
 
     let mut rt = q::Runtime::new();
@@ -40,6 +41,60 @@ fn main() {
         }
         ctx.js_loop().unwrap();
     });
+}
+
+fn test_base64() {
+    use wasmedge_quickjs as q;
+    let mut rt = q::Runtime::new();
+    rt.run_with_context(|ctx| {
+        let code = String::from("btoa('stellate')");
+        let r = ctx.eval_global_str(code, false);
+        if let JsValue::String(js_string) = r {
+            if js_string.as_str() == "c3RlbGxhdGU=" {
+                println!("Matched encode value")
+            } else {
+                println!("Missmatched encode value")
+            }
+        } else {
+            println!("Missmatched encode value")
+        }
+
+        let code = String::from("atob('c3RlbGxhdGU=')");
+        let r = ctx.eval_global_str(code, false);
+        if let JsValue::String(js_string) = r {
+            if js_string.as_str() == "stellate" {
+                println!("Matched decode value")
+            } else {
+                println!("Missmatched decode value")
+            }
+        } else {
+            println!("Missmatched decode value")
+        }
+
+        let code = String::from("btoa(undefined)");
+        let r = ctx.eval_global_str(code, false);
+        if let JsValue::String(js_string) = r {
+            if js_string.as_str() == "dW5kZWZpbmVk" {
+                println!("Matched encode value")
+            } else {
+                println!("Missmatched encode value")
+            }
+        } else {
+            println!("Missmatched encode value")
+        }
+
+        let code = String::from("atob('dW5kZWZpbmVk')");
+        let r = ctx.eval_global_str(code, false);
+        if let JsValue::String(js_string) = r {
+            if js_string.as_str() == "undefined" {
+                println!("Matched decode value")
+            } else {
+                println!("Missmatched decode value")
+            }
+        } else {
+            println!("Missmatched decode value")
+        }
+    })
 }
 
 fn test_errors() {

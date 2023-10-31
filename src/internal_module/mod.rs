@@ -1,3 +1,4 @@
+pub mod base64;
 pub mod core;
 pub mod encoding;
 pub mod httpx;
