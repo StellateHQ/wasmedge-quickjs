@@ -5,19 +5,36 @@ use crate::{JsValue, Context, JsString};
 use crate::quickjs_sys::*;
 
 fn atob(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
-    let base64_string = argv.get(0);
+    let base64_string = match argv.get(0) {
+      Some(JsValue::String(base64_string)) => Some(base64_string),
+      // For correctness we would need to convert any number, undefined or null to 
+      // a string but not sure if we can coerce here.
+      Some(value) => value.to_string(),
+      None => {
+        ctx.throw_type_error("Could not decode to UTF-8 String");
+        return JsValue::UnDefined;
+      }
+    };
     if let Some(JsValue::String(base64_string)) = base64_string {
       let result = general_purpose::STANDARD_NO_PAD.decode(base64_string.to_string());
-      if let Ok(decoded) = result {
-        let result = String::from_utf8(decoded);
-        if let Ok(final_decoded_string) = result {
-          let js_string = ctx.new_string(final_decoded_string.as_str());
-          JsValue::String(js_string)
-        } else {
-          JsValue::UnDefined
+      match result {
+        Ok(decoded) => {
+          let result = String::from_utf8(decoded);
+          match result {
+            Ok(final_decoded_string) => {
+              let js_string = ctx.new_string(final_decoded_string.as_str());
+              JsValue::String(js_string)
+            }
+            Err(e) => {
+              ctx.throw_type_error("Could not decode to UTF-8 String");
+              JsValue::UnDefined
+            }
+          }
         }
-      } else {
-        JsValue::UnDefined
+        Err(e) => {
+            ctx.throw_type_error("Could not decode to UTF-8 String");
+            JsValue::UnDefined
+        }
       }
     } else {
         JsValue::UnDefined
