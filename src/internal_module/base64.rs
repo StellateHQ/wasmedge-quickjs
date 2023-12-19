@@ -23,7 +23,9 @@ fn atob(ctx: &mut Context, _this_val: JsValue, argv: &[JsValue]) -> JsValue {
         }
     };
 
-    let result = general_purpose::STANDARD.decode(base64_string);
+    let result = general_purpose::STANDARD
+        .decode(base64_string)
+        .or_else(|_| base64::engine::general_purpose::STANDARD_NO_PAD.decode(base64_string));
     match result {
         Ok(decoded) => {
             let result = String::from_utf8(decoded);
